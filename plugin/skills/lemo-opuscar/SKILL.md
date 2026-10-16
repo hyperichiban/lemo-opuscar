@@ -11,6 +11,8 @@ The styles, guides and tools live in the Lemo-Opuscar library (github.com/lemomo
 2. **Install the core tools early.** Start `sh "<skill base directory>/scripts/setup.sh" deps` right away, in the background if you can: it takes a few minutes the first time. Add `deps voice` or `deps music` later, only if the film needs them (`$LIB/TECHNIQUE.md` §1). Report missing system tools (Node, ffmpeg, Python) in your one round of questions; don't install system software yourself. Packages a style needs (its `STYLE.md` lists them) you install yourself, into the project folder.
 3. **Follow the library.** Read `$LIB/AGENTS.md` and do what it says: finding the style, the one round of questions, the treatment, production and delivery.
 
+Our fork adds `$LIB/LOCAL.md`: offline/online mode switch, storyboard gate by default, 720p drafts, one 1080p final. Warm the offline caches with `sh "<skill base directory>/scripts/setup.sh" local`.
+
 What changes in skill mode:
 
 | | |
