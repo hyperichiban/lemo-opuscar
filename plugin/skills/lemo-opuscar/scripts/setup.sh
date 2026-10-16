@@ -40,11 +40,15 @@ elif ! is_lib "$LIB"; then
   git -C "$LIB" config lemo.managed true
 fi
 LIB=$(cd "$LIB" && pwd -P)
+# Windows: uv builds .venv/Scripts, not .venv/bin (our fork also mirrors the
+# exe into .venv/bin, but native tools need the real Windows path).
+PYBIN=$LIB/.venv/bin/python
+case "$(uname -s)" in MINGW*|MSYS*|CYGWIN*) PYBIN=$(cd "$LIB" && pwd -W)/.venv/Scripts/python.exe ;; esac
 
 # Installed packages are tracked by content: a marker holds a checksum of the files they came from (and the Python
 # version), so a changed package.json or requirements file triggers a reinstall.
 sig() { cat "$@" 2>/dev/null | cksum | cut -d' ' -f1; }
-pysig() { echo "$(sig "$1")-$("$LIB/.venv/bin/python" -V 2>&1 | cut -d. -f1,2)"; }
+pysig() { echo "$(sig "$1")-$("$PYBIN" -V 2>&1 | cut -d. -f1,2)"; }
 req() { [ "$1" = core ] && echo "$LIB/requirements.txt" || echo "$LIB/requirements-$1.txt"; }
 node_ok() { [ "$(cat "$LIB/node_modules/.lemo-ok" 2>/dev/null)" = "$(sig "$LIB/package.json" "$LIB/package-lock.json")" ]; }
 py_ok() { [ "$(cat "$LIB/.venv/.lemo-$1" 2>/dev/null)" = "$(pysig "$(req "$1")")" ]; }
@@ -77,8 +81,8 @@ case "$1" in
     fi
     for t in $tiers; do
       py_ok "$t" && continue
-      if command -v uv >/dev/null; then uv pip install --quiet --python .venv/bin/python -r "$(req "$t")"
-      else .venv/bin/python -m pip install --quiet --disable-pip-version-check -r "$(req "$t")"; fi
+      if command -v uv >/dev/null; then uv pip install --quiet --python "$PYBIN" -r "$(req "$t")"
+      else "$PYBIN" -m pip install --quiet --disable-pip-version-check -r "$(req "$t")"; fi
       pysig "$(req "$t")" > ".venv/.lemo-$t"
     done
     case " $tiers " in *" voice "*) [ -f core/tts/kokoro-v1.0.onnx ] && [ -f core/tts/voices-v1.0.bin ] || sh tools/fetch.sh voice ;; esac

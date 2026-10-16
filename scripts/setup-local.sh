@@ -9,6 +9,9 @@
 set -e
 cd "$(dirname "$0")/.."
 LIB=$(pwd -P)
+# Windows consoles default to cp1252: upstream asset scripts print Unicode
+# (e.g. fetch.sh progress arrows). Force UTF-8 for every child Python.
+export PYTHONIOENCODING=utf-8 PYTHONUTF8=1
 
 MODE=offline
 CHECK_ONLY=""
@@ -24,6 +27,21 @@ done
 # DEFAULT_LIB: override with INSTRUMENT_LIB=<lib> (freepats karoryfer salamander vcsl vsco2ce)
 DEFAULT_LIB=${INSTRUMENT_LIB:-freepats}
 
+# Windows: uv builds .venv/Scripts, upstream expects .venv/bin. Mirror the
+# interpreter (a real copy: CPython finds pyvenv.cfg up-tree) so setup.sh
+# and fetch.sh run unmodified. Re-checked every run: setup.sh recreates a
+# broken .venv from scratch, which would drop the mirror.
+win_mirror() {
+  case "$(uname -s)" in MINGW*|MSYS*|CYGWIN*) ;; *) return 0 ;; esac
+  if [ ! -x .venv/Scripts/python.exe ]; then
+    if command -v uv >/dev/null; then uv venv --quiet --python 3.12 .venv
+    else echo "✗ uv is needed on Windows for the first venv (or create .venv with Scripts/python.exe yourself)"; exit 1; fi
+  fi
+  if [ ! -x .venv/bin/python.exe ]; then
+    mkdir -p .venv/bin && cp .venv/Scripts/python.exe .venv/bin/python.exe
+  fi
+}
+
 # 1. System tools: report only.
 miss=""
 if command -v node >/dev/null; then
@@ -38,6 +56,7 @@ if [ -n "$miss" ]; then echo "✗ missing:$miss (install these yourself; this sc
 [ -n "$CHECK_ONLY" ] && { echo "LIB=$LIB"; exit 0; }
 
 SETUP="plugin/skills/lemo-opuscar/scripts/setup.sh"
+win_mirror
 if [ "$MODE" = online ]; then
   echo "mode: online (edge-tts + fresh libraries need a connection)"
   sh "$SETUP" deps $TIERS
